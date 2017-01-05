@@ -1,11 +1,19 @@
 
-package require Tcl 8.5
+package require Tcl 8.4
 
-package provide logs 1.0
+package provide slog 1.0
 
-namespace eval logs {
+namespace eval slog {
     namespace export get_levels
     namespace export set_level
+    namespace export msg
+    namespace export debug
+    namespace export info
+    namespace export warn
+    namespace export error
+    if {[lindex [split [info patchlevel] "."] 1] > 4} {
+        namespace ensemble create
+    }
 
     variable level 0
     # -1    DEBUG
@@ -17,9 +25,9 @@ namespace eval logs {
         return {debug info warn error}
     }
 
-    proc set_level {lvl} {
+    proc set_level {level_str} {
         variable level
-        switch -exact -- [string tolower $lvl] {
+        switch -exact -- [string tolower $level_str] {
             debug   { set level -1 }
             info    { set level 0 }
             warn    { set level 1 }
@@ -29,38 +37,40 @@ namespace eval logs {
         return $level
     }
 
-    proc msg {lvl args} {
+    proc msg {level args} {
         set t [clock format [clock seconds] -format "%Y-%m-%dT%H:%M:%S"]
-        puts [format "%s - %-5s - %s" $t $lvl [concat {*}$args]]
+        set message ""
+        foreach arg $args {
+            set message [concat $message $arg]
+        }
+        puts [format "%s - %-5s - %s" $t $level $message]
     }
 
     proc debug {args} {
         variable level
         if {-1 >= $level} {
-            msg DEBUG {*}$args
+            msg DEBUG $args
         }
     }
 
     proc info {args} {
         variable level
         if {0 >= $level} {
-            msg INFO {*}$args
+            msg INFO $args
         }
     }
 
     proc warn {args} {
         variable level
         if {1 >= $level} {
-            msg WARN {*}$args
+            msg WARN $args
         }
     }
 
     proc error {args} {
         variable level
         if {2 >= $level} {
-            msg ERROR {*}$args
+            msg ERROR $args
         }
     }
 }
-
-
