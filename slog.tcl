@@ -1,9 +1,9 @@
 
 package require Tcl 8.5
 
-package provide logs 1.0
+package provide slog 1.0
 
-namespace eval logs {
+namespace eval slog {
     namespace export get_levels
     namespace export set_level
 
