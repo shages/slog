@@ -11,7 +11,11 @@ namespace eval slog {
     namespace export info
     namespace export warn
     namespace export error
-    if {[lindex [split [info patchlevel] "."] 1] > 4} {
+    namespace export profile_mark
+    namespace export profile_summary
+    namespace export profile_reset_time
+    namespace export profile_clear_data
+    if {[lindex [split [::info patchlevel] "."] 1] > 4} {
         namespace ensemble create
     }
 
@@ -20,6 +24,8 @@ namespace eval slog {
     #  0    INFO
     #  1    WARN
     #  2    ERROR
+    variable profile_data
+    variable profile_last_time
 
     proc get_levels {} {
         return {debug info warn error}
@@ -73,4 +79,105 @@ namespace eval slog {
             msg ERROR $args
         }
     }
+
+    proc get_time {} {
+        if {[lindex [split [::info patchlevel] "."] 1] > 4} {
+            return [clock milliseconds]
+        } else {
+            return [clock clicks -milliseconds]
+        }
+    }
+
+    proc profile_mark {label} {
+        # Mark the end of a section of code, and record the runtime
+        #
+        # If the key already exists by this name, sum the runtime
+        #
+        # Arguments:
+        # label     The name (string) of the code block. Used for dict key.
+        #
+        # Returns:
+        # runtime of this code block
+        variable profile_labels
+        variable profile_data
+        variable profile_last_time
+
+        # Measure time
+        set now [get_time]
+        set runtime [expr {$now - $profile_last_time}]
+        set profile_last_time $now
+
+        # Update profile data with runtime
+        if {[::info exists profile_data($label)]} {
+            set profile_data($label) [expr {$profile_data($label) + $runtime}]
+        } else {
+            lappend profile_labels $label
+            set profile_data($label) $runtime
+        }
+        return $runtime
+    }
+
+    proc profile_summary {{sort_method "none"}} {
+        # Pretty print the runtime profile data
+        #
+        # Usage:
+        #   sort [sort_method]
+        #
+        # Arguments:
+        # sort      Sorting method ["none" | "runtime_ascending" | "runtime_descending"]
+        #
+        # Returns: Nothing
+        variable profile_labels
+        variable profile_data
+
+        set labels $profile_labels
+
+        # Sort data
+        if {$sort_method ne "none"} {
+            # Convert to nested list
+            set data {}
+            foreach {label value} [array get profile_data] {
+                lappend data [list $label $value]
+            }
+            # Sort
+            if {$sort_method eq "ascending"} {
+                set data [lsort -real -increasing -index 1 $data]
+            } elseif {$sort_method eq "descending"} {
+                set data [lsort -real -decreasing -index 1 $data]
+            }
+            # Extract only the label
+            set labels {}
+            foreach pair $data {
+                lappend labels [lindex $pair 0]
+            }
+        }
+
+        puts "slog Profile Summary"
+        puts "---------------------------------------------"
+        foreach label $labels {
+            puts [format "%20s : %0.2fs" \
+                $label \
+                [expr {$profile_data($label) / 1000.0}]]
+        }
+        puts "---------------------------------------------"
+    }
+
+    proc profile_reset_time {} {
+        # Reset the profile last known time
+        variable profile_last_time
+        set profile_last_time [get_time]
+    }
+
+    proc profile_clear_data {} {
+        # Clear all recorded profile marks and reset time
+        variable profile_labels
+        variable profile_data
+
+        set profile_labels [list]
+        array unset profile_data
+        profile_reset_time
+    }
 }
+
+set slog::profile_last_time [slog::get_time]
+set slog::profile_labels [list]
