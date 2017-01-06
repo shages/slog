@@ -28,8 +28,9 @@ Integer value indicating the logging verbosity level
 |   1   | WARN          |
 |   2   | ERROR         |
 
-### Procedures
-For Tcl 8.5 or higher, namespace ensemble is created so the colons can be omitted.
+### Core Procedures
+For Tcl 8.5 or higher, namespace ensemble is created so the colons can be
+omitted.
 
 #### `slog::get_levels`
 Returns the list of logging levels in sorted order of verbosity
@@ -85,3 +86,59 @@ Used by other message commands to print message with formatting
 % slog::msg huh? "Hello"
 2017-01-05T15:17:09 - huh?  - Hello
 ```
+
+### Profiling
+*slog* can record simple runtime with its profile* procedures. Runtime data is
+stored in the tcl array `slog::profile_data`, indexed by a user-entered
+"label."
+
+Example:
+```tcl
+package require slog
+
+slog::profile_mark inital_setup
+
+sleep 2
+slog::profile_mark "A"
+
+sleep 3
+slog::profile_mark "B"
+
+sleep 1
+slog::profile_reset_time
+sleep 1
+# two seconds have passed, but only recorded 1
+slog::profile_mark "C"
+
+slog::profile_summary
+# slog Profile Summary
+# ---------------------------------------------
+#         inital_setup : 11.60s
+#                    A : 4.02s
+#                    B : 6.00s
+#                    C : 2.00s
+# ---------------------------------------------
+
+slog::profile_clear_data
+slog::profile_summary
+# slog Profile Summary
+# ---------------------------------------------
+# ---------------------------------------------
+```
+
+#### `slog::profile_reset_time`
+Reset the profiler's last known time
+
+#### `slog::profile_mark label`
+Record the runtime
+
+#### `slog::profile_summary [sort_method]`
+Pretty print summary of runtime data. Labels can optionally be sorted with the
+`sort_method` argument:
+
+* none (default) - Labels printed in original marked order
+* ascending - Labels sorted by ascending runtime
+* descending - Labels sorted by descending runtime
+
+#### `slog::profile_clear_data`
+Clear all profile data
