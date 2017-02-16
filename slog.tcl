@@ -43,11 +43,11 @@ namespace eval slog {
         return $level
     }
 
-    proc msg {level args} {
+    proc msg {level text} {
         set t [clock format [clock seconds] -format "%Y-%m-%dT%H:%M:%S"]
         set message ""
-        foreach arg $args {
-            set message [concat $message $arg]
+        foreach snippet $text {
+            set message [concat $message $snippet]
         }
         puts [format "%s - %-5s - %s" $t $level $message]
     }
